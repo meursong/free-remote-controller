@@ -231,7 +231,7 @@ fun QuickActionCard(
                 .fillMaxSize()
                 .padding(12.dp),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
