@@ -45,7 +45,8 @@ fun HomeScreen(
             DeviceItem("1", "거실 TV", DeviceType.TV, Icons.Filled.Tv),
             DeviceItem("2", "안방 에어컨", DeviceType.AIR_CONDITIONER, Icons.Filled.AcUnit),
             DeviceItem("3", "케이블 박스", DeviceType.SET_TOP_BOX, Icons.Filled.SettingsInputHdmi),
-            DeviceItem("4", "사운드바", DeviceType.AUDIO, Icons.Filled.Speaker)
+            DeviceItem("4", "사운드바", DeviceType.AUDIO, Icons.Filled.Speaker),
+            DeviceItem("5", "Chromecast", DeviceType.TV, Icons.Filled.Cast)
         )
     }
 
@@ -96,7 +97,11 @@ fun HomeScreen(
                 DeviceCard(
                     device = device,
                     onClick = {
-                        navController.navigate(RemoteScreens.RemoteControl.route)
+                        if (device.id == "5") {
+                            navController.navigate(RemoteScreens.Chromecast.route)
+                        } else {
+                            navController.navigate(RemoteScreens.RemoteControl.route)
+                        }
                     }
                 )
             }
