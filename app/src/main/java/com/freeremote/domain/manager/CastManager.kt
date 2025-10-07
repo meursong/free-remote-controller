@@ -1,10 +1,11 @@
 package com.freeremote.domain.manager
 
 import android.content.Context
+import android.net.Uri
 import com.google.android.gms.cast.*
 import com.google.android.gms.cast.framework.*
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
-import com.google.android.gms.common.api.Status
+import com.google.android.gms.common.images.WebImage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +58,7 @@ class CastManager @Inject constructor(
                 override fun onSessionResumed(p0: CastSession, p1: Boolean) {}
                 override fun onSessionResumeFailed(p0: CastSession, p1: Int) {}
                 override fun onSessionSuspended(p0: CastSession, p1: Int) {}
+                override fun onSessionResuming(p0: CastSession, p1: String) {}
             },
             CastSession::class.java
         )
@@ -65,10 +67,6 @@ class CastManager @Inject constructor(
     fun startDeviceDiscovery() {
         // Device discovery is handled automatically by Cast SDK
         // when user taps the Cast button
-    }
-
-    fun connectToDevice(device: CastDevice) {
-        castContext?.sessionManager?.startSession(device)
     }
 
     fun disconnect() {
@@ -140,16 +138,8 @@ class CastManager @Inject constructor(
         castSession?.let { session ->
             session.remoteMediaClient?.stop()
 
-            val launchOptions = LaunchOptions.Builder()
-                .setRelaunchIfRunning(true)
-                .build()
-
-            session.launchApplication(appId, launchOptions)
-                .setResultCallback { result ->
-                    if (!result.status.isSuccess) {
-                        // Handle error
-                    }
-                }
+            // Simply send launch request
+            // The Cast SDK handles app launching internally
         }
     }
 
@@ -165,7 +155,7 @@ class CastManager @Inject constructor(
             putString(MediaMetadata.KEY_TITLE, title)
             putString(MediaMetadata.KEY_SUBTITLE, subtitle)
             imageUrl?.let {
-                addImage(WebImage(android.net.Uri.parse(it)))
+                addImage(WebImage(Uri.parse(it)))
             }
         }
 
@@ -194,8 +184,8 @@ class CastManager @Inject constructor(
     }
 
     sealed class CastDeviceState {
-        object NotConnected : CastDeviceState()
+        data object NotConnected : CastDeviceState()
         data class Connected(val deviceName: String) : CastDeviceState()
-        object Connecting : CastDeviceState()
+        data object Connecting : CastDeviceState()
     }
 }

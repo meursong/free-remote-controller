@@ -49,10 +49,10 @@ fun ChromecastControlScreen(
                 title = {
                     Column {
                         Text("Chromecast Control", fontWeight = FontWeight.Bold)
-                        when (deviceState) {
+                        when (val state = deviceState) {
                             is ChromecastViewModel.CastState.Connected -> {
                                 Text(
-                                    text = "Connected to ${deviceState.deviceName}",
+                                    text = "Connected to ${state.deviceName}",
                                     fontSize = 12.sp,
                                     color = Color.Green
                                 )
