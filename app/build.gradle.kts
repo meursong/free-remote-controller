@@ -89,6 +89,13 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // Google Cast SDK for Chromecast control
+    implementation("com.google.android.gms:play-services-cast:21.4.0")
+    implementation("com.google.android.gms:play-services-cast-framework:21.4.0")
+
+    // mDNS for device discovery
+    implementation("androidx.mediarouter:mediarouter:1.6.0")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
