@@ -80,15 +80,10 @@ class CastManager @Inject constructor(
     }
 
     /**
-     * Initiates device discovery for available Cast devices.
-     *
-     * Note: Device discovery is handled automatically by the Cast SDK
-     * when the user interacts with the Cast button in the UI.
+     * Device discovery is handled automatically by MediaRouteButton.
+     * No manual discovery needed - the Cast SDK manages this when
+     * users click the Cast button in the UI.
      */
-    fun startDeviceDiscovery() {
-        // Device discovery is handled automatically by Cast SDK
-        // when user taps the Cast button
-    }
 
     /**
      * Disconnects from the currently connected Cast device.

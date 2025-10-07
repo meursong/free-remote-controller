@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.freeremote.presentation.navigation.RemoteScreens
+import com.freeremote.presentation.components.CastButton
 
 data class DeviceItem(
     val id: String,
@@ -60,6 +61,11 @@ fun HomeScreen(
                     )
                 },
                 actions = {
+                    // Cast button for quick access
+                    CastButton(
+                        modifier = Modifier.padding(end = 8.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                     IconButton(onClick = { navController.navigate(RemoteScreens.Settings.route) }) {
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }

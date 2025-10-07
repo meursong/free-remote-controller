@@ -53,9 +53,8 @@ class ChromecastViewModel @Inject constructor(
         }
     }
 
-    fun scanForDevices() {
-        castManager.startDeviceDiscovery()
-    }
+    // Device discovery is handled automatically by the MediaRouteButton
+    // No need for manual scanning
 
     fun disconnect() {
         castManager.disconnect()

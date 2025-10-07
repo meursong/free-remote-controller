@@ -26,8 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.google.android.gms.cast.framework.CastButtonFactory
-import com.google.android.gms.cast.framework.CastContext
+import com.freeremote.presentation.components.CastButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,10 +79,10 @@ fun ChromecastControlScreen(
                     }
                 },
                 actions = {
-                    // Cast button will be added here programmatically
-                    IconButton(onClick = { viewModel.scanForDevices() }) {
-                        Icon(Icons.Filled.Cast, contentDescription = "Cast")
-                    }
+                    // Proper Cast button that shows device selector
+                    CastButton(
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black
