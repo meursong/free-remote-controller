@@ -8,6 +8,7 @@ import com.freeremote.presentation.screens.home.HomeScreen
 import com.freeremote.presentation.screens.remote.RemoteControlScreen
 import com.freeremote.presentation.screens.settings.SettingsScreen
 import com.freeremote.presentation.screens.devices.DevicesScreen
+import com.freeremote.presentation.screens.chromecast.ChromecastControlScreen
 
 @Composable
 fun RemoteNavHost(
@@ -32,6 +33,10 @@ fun RemoteNavHost(
         composable(RemoteScreens.Settings.route) {
             SettingsScreen(navController = navController)
         }
+
+        composable(RemoteScreens.Chromecast.route) {
+            ChromecastControlScreen(navController = navController)
+        }
     }
 }
 
@@ -40,4 +45,5 @@ sealed class RemoteScreens(val route: String) {
     object RemoteControl : RemoteScreens("remote_control")
     object Devices : RemoteScreens("devices")
     object Settings : RemoteScreens("settings")
+    object Chromecast : RemoteScreens("chromecast")
 }
