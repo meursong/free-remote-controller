@@ -17,3 +17,42 @@ bin/
 gen/
 out/
 release/
+
+# Build folders
+app/build/
+build/
+*/build/
+
+# Gradle files
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# IntelliJ IDEA
+.idea/
+*.ipr
+*.iws
+
+# Android Studio
+.navigation/
+captures/
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services (if using Firebase)
+google-services.json
+
+# Proguard
+proguard/
+
+# Log files
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Backup files
+*.bak
