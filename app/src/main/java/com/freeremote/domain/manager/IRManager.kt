@@ -7,6 +7,15 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Manager class for infrared (IR) transmission functionality.
+ *
+ * This singleton class provides abstraction for IR blaster operations,
+ * including checking hardware availability and transmitting IR codes
+ * to control various devices like TVs, air conditioners, etc.
+ *
+ * @property context Application context used for accessing system services
+ */
 @Singleton
 class IRManager @Inject constructor(
     @ApplicationContext private val context: Context
@@ -17,10 +26,22 @@ class IRManager @Inject constructor(
         null
     }
 
+    /**
+     * Checks if the device has an IR emitter.
+     *
+     * @return True if the device has IR blaster hardware, false otherwise
+     */
     fun hasIrEmitter(): Boolean {
         return irManager?.hasIrEmitter() ?: false
     }
 
+    /**
+     * Transmits an infrared pattern with the specified frequency.
+     *
+     * @param frequency The carrier frequency in Hz
+     * @param pattern The IR pattern as alternating on/off durations in microseconds
+     * @return True if transmission was successful, false otherwise
+     */
     fun transmit(frequency: Int, pattern: IntArray): Boolean {
         return try {
             irManager?.transmit(frequency, pattern)
@@ -31,6 +52,11 @@ class IRManager @Inject constructor(
         }
     }
 
+    /**
+     * Retrieves the supported carrier frequency ranges for the IR transmitter.
+     *
+     * @return Array of supported frequency ranges, or null if not available
+     */
     fun getCarrierFrequencies(): Array<ConsumerIrManager.CarrierFrequencyRange>? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             irManager?.carrierFrequencies
@@ -39,9 +65,17 @@ class IRManager @Inject constructor(
         }
     }
 
-    // Common IR codes for different devices
+    /**
+     * Collection of common IR codes for different device brands and models.
+     *
+     * This object contains pre-defined IR codes for various manufacturers,
+     * organized by brand and button function.
+     */
     object IRCodes {
-        // Samsung TV codes - 실제 Samsung TV 프로토콜 기반
+        /**
+         * Samsung TV IR codes based on Samsung NEC protocol.
+         * Uses Address: 0x07 for TV control commands.
+         */
         val SAMSUNG_TV = mapOf(
             "POWER" to IRCode(38000, intArrayOf(
                 // Samsung NEC protocol - Address: 0x07, Command: 0x02
@@ -175,7 +209,10 @@ class IRManager @Inject constructor(
             ))
         )
 
-        // LG TV codes - 실제 LG 프로토콜 기반
+        /**
+         * LG TV IR codes based on LG protocol.
+         * Standard LG IR protocol implementation for TV control.
+         */
         val LG_TV = mapOf(
             "POWER" to IRCode(38000, intArrayOf(
                 9000, 4500,
@@ -204,6 +241,12 @@ class IRManager @Inject constructor(
         )
     }
 
+    /**
+     * Data class representing an IR code with frequency and pattern.
+     *
+     * @property frequency The carrier frequency in Hz (typically 38000 for most consumer devices)
+     * @property pattern The IR signal pattern as alternating on/off durations in microseconds
+     */
     data class IRCode(
         val frequency: Int,
         val pattern: IntArray

@@ -12,6 +12,15 @@ import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Manager class for Google Cast functionality.
+ *
+ * This singleton class handles all Google Cast operations including device discovery,
+ * connection management, media control, and app launching. It provides a reactive
+ * interface using Kotlin Flow for observing Cast state changes.
+ *
+ * @property context Application context used for Cast SDK initialization
+ */
 @Singleton
 class CastManager @Inject constructor(
     @ApplicationContext private val context: Context
@@ -35,6 +44,12 @@ class CastManager @Inject constructor(
         }
     }
 
+    /**
+     * Sets up the Cast session listener to track connection state changes.
+     *
+     * This listener handles Cast session lifecycle events and updates
+     * the device state accordingly.
+     */
     private fun setupSessionListener() {
         castContext?.sessionManager?.addSessionManagerListener(
             object : SessionManagerListener<CastSession> {
@@ -64,40 +79,79 @@ class CastManager @Inject constructor(
         )
     }
 
+    /**
+     * Initiates device discovery for available Cast devices.
+     *
+     * Note: Device discovery is handled automatically by the Cast SDK
+     * when the user interacts with the Cast button in the UI.
+     */
     fun startDeviceDiscovery() {
         // Device discovery is handled automatically by Cast SDK
         // when user taps the Cast button
     }
 
+    /**
+     * Disconnects from the currently connected Cast device.
+     */
     fun disconnect() {
         castContext?.sessionManager?.endCurrentSession(true)
     }
 
     // Media Control Functions
+
+    /**
+     * Starts or resumes playback on the Cast device.
+     */
     fun play() {
         remoteMediaClient?.play()
     }
 
+    /**
+     * Pauses playback on the Cast device.
+     */
     fun pause() {
         remoteMediaClient?.pause()
     }
 
+    /**
+     * Stops playback on the Cast device.
+     */
     fun stop() {
         remoteMediaClient?.stop()
     }
 
+    /**
+     * Seeks to a specific position in the current media.
+     *
+     * @param position Target position in milliseconds
+     */
     fun seek(position: Long) {
         remoteMediaClient?.seek(position)
     }
 
+    /**
+     * Sets the volume level for the Cast stream.
+     *
+     * @param volume Volume level between 0.0 (mute) and 1.0 (max)
+     */
     fun setVolume(volume: Double) {
         remoteMediaClient?.setStreamVolume(volume)
     }
 
+    /**
+     * Mutes or unmutes the Cast stream.
+     *
+     * @param muted True to mute, false to unmute
+     */
     fun mute(muted: Boolean) {
         remoteMediaClient?.setStreamMute(muted)
     }
 
+    /**
+     * Skips forward in the current media by the specified duration.
+     *
+     * @param seconds Number of seconds to skip forward (default: 10)
+     */
     fun skipForward(seconds: Long = 10) {
         remoteMediaClient?.let { client ->
             val currentPosition = client.approximateStreamPosition
@@ -105,6 +159,11 @@ class CastManager @Inject constructor(
         }
     }
 
+    /**
+     * Skips backward in the current media by the specified duration.
+     *
+     * @param seconds Number of seconds to skip backward (default: 10)
+     */
     fun skipBackward(seconds: Long = 10) {
         remoteMediaClient?.let { client ->
             val currentPosition = client.approximateStreamPosition
@@ -114,26 +173,47 @@ class CastManager @Inject constructor(
     }
 
     // Launch specific apps
+
+    /**
+     * Launches the Netflix app on the Cast device.
+     */
     fun launchNetflix() {
         launchApp("CA5E8412") // Netflix app ID
     }
 
+    /**
+     * Launches the YouTube app on the Cast device.
+     */
     fun launchYouTube() {
         launchApp("233637DE") // YouTube app ID
     }
 
+    /**
+     * Launches the Spotify app on the Cast device.
+     */
     fun launchSpotify() {
         launchApp("CC32E753") // Spotify app ID
     }
 
+    /**
+     * Launches the Disney+ app on the Cast device.
+     */
     fun launchDisneyPlus() {
         launchApp("C3DE6BC2") // Disney+ app ID
     }
 
+    /**
+     * Launches the Prime Video app on the Cast device.
+     */
     fun launchPrimeVideo() {
         launchApp("ADBEB697") // Prime Video app ID
     }
 
+    /**
+     * Internal method to launch an app on the Cast device.
+     *
+     * @param appId The application ID for the Cast receiver app
+     */
     private fun launchApp(appId: String) {
         castSession?.let { session ->
             session.remoteMediaClient?.stop()
@@ -143,7 +223,15 @@ class CastManager @Inject constructor(
         }
     }
 
-    // Load media with metadata
+    /**
+     * Loads media content onto the Cast device with metadata.
+     *
+     * @param url The URL of the media content to load
+     * @param title The title of the media
+     * @param subtitle The subtitle or description of the media
+     * @param imageUrl Optional URL for the media's thumbnail image
+     * @param contentType MIME type of the media (default: "video/mp4")
+     */
     fun loadMedia(
         url: String,
         title: String = "",
@@ -173,7 +261,12 @@ class CastManager @Inject constructor(
         remoteMediaClient?.load(mediaInfo, loadOptions)
     }
 
-    // Send custom message to receiver app
+    /**
+     * Sends a custom message to the Cast receiver application.
+     *
+     * @param namespace The namespace for the custom message channel
+     * @param message The message content to send
+     */
     fun sendMessage(namespace: String, message: String) {
         castSession?.sendMessage(namespace, message)
             ?.setResultCallback { result ->
@@ -183,9 +276,19 @@ class CastManager @Inject constructor(
             }
     }
 
+    /**
+     * Represents the connection state of a Cast device.
+     */
     sealed class CastDeviceState {
+        /** No Cast device is currently connected. */
         data object NotConnected : CastDeviceState()
+
+        /** A Cast device is connected and ready for use.
+         * @property deviceName The friendly name of the connected device
+         */
         data class Connected(val deviceName: String) : CastDeviceState()
+
+        /** Currently attempting to connect to a Cast device. */
         data object Connecting : CastDeviceState()
     }
 }
