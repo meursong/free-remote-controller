@@ -79,17 +79,10 @@ fun ChromecastControlScreen(
                     }
                 },
                 actions = {
-                    // Proper Cast button that shows device selector - wrapped for safety
-                    try {
-                        CastButton(
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                    } catch (e: Exception) {
-                        // Fallback if Cast is not available
-                        IconButton(onClick = { /* No-op */ }) {
-                            Icon(Icons.Filled.Cast, contentDescription = "Cast not available")
-                        }
-                    }
+                    // Proper Cast button that shows device selector
+                    CastButton(
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black

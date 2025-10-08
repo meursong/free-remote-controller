@@ -61,15 +61,11 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    // Cast button for quick access - wrapped in try-catch for safety
-                    try {
-                        CastButton(
-                            modifier = Modifier.padding(end = 8.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    } catch (e: Exception) {
-                        // If Cast is not available, just show settings
-                    }
+                    // Cast button for quick access
+                    CastButton(
+                        modifier = Modifier.padding(end = 8.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                     IconButton(onClick = { navController.navigate(RemoteScreens.Settings.route) }) {
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }

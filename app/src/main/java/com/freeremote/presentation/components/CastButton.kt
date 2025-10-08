@@ -2,6 +2,7 @@ package com.freeremote.presentation.components
 
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
@@ -21,29 +22,37 @@ fun CastButton(
     modifier: Modifier = Modifier,
     tint: Color = Color.White
 ) {
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            MediaRouteButton(context).apply {
-                try {
-                    // Ensure CastContext is initialized before setting up the button
-                    CastContext.getSharedInstance(context)
-
-                    // Wire up the button to Cast framework
-                    CastButtonFactory.setUpMediaRouteButton(context, this)
-
-                    Log.d("CastButton", "Cast button initialized successfully")
-                } catch (e: Exception) {
-                    Log.e("CastButton", "Failed to initialize Cast button", e)
-                    // Button will still be created but won't function if Cast is not available
-                    isEnabled = false
-                }
-            }
-        },
-        update = { button ->
-            // MediaRouteButton handles its own state internally
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isCastAvailable = remember {
+        try {
+            CastContext.getSharedInstance(context)
+            true
+        } catch (e: Exception) {
+            Log.e("CastButton", "Cast is not available on this device", e)
+            false
         }
-    )
+    }
+
+    if (isCastAvailable) {
+        AndroidView(
+            modifier = modifier,
+            factory = { ctx ->
+                MediaRouteButton(ctx).apply {
+                    try {
+                        // Wire up the button to Cast framework
+                        CastButtonFactory.setUpMediaRouteButton(ctx, this)
+                        Log.d("CastButton", "Cast button initialized successfully")
+                    } catch (e: Exception) {
+                        Log.e("CastButton", "Failed to setup Cast button", e)
+                        visibility = android.view.View.GONE
+                    }
+                }
+            },
+            update = { button ->
+                // MediaRouteButton handles its own state internally
+            }
+        )
+    }
 }
 
 /**
