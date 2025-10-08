@@ -210,11 +210,28 @@ class CastManager @Inject constructor(
      * @param appId The application ID for the Cast receiver app
      */
     private fun launchApp(appId: String) {
-        castSession?.let { session ->
-            session.remoteMediaClient?.stop()
+        // Get the current Cast device
+        val currentDevice = castContext?.sessionManager?.currentCastSession?.castDevice
 
-            // Simply send launch request
-            // The Cast SDK handles app launching internally
+        if (currentDevice != null) {
+            // End the current session first
+            castContext?.sessionManager?.endCurrentSession(false)
+
+            // Start a new session with the target app
+            val sessionRequest = SessionRequest.Builder()
+                .setCastDevice(currentDevice)
+                .setAppId(appId)
+                .setLaunchOptions(
+                    LaunchOptions.Builder()
+                        .setRelaunchIfRunning(true)
+                        .build()
+                )
+                .build()
+
+            castContext?.sessionManager?.startSession(sessionRequest)
+        } else {
+            // No active session or device
+            println("No Cast device connected. Please connect to a device first.")
         }
     }
 
