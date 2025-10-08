@@ -228,66 +228,80 @@ class CastManager @Inject constructor(
         if (device != null && sessionManager != null) {
             android.util.Log.d("CastManager", "Device found, attempting to launch app: $appId")
 
-            try {
-                // Save the device for reconnection
-                val savedDevice = device
+            // Save the device for reconnection
+            val savedDevice = device
 
-                // End the current session
-                android.util.Log.d("CastManager", "Ending current session...")
-                sessionManager.endCurrentSession(true)
+            // End the current session
+            android.util.Log.d("CastManager", "Ending current session...")
+            sessionManager.endCurrentSession(true)
 
-                // Set up a listener to reconnect with the new app when session ends
-                sessionManager.addSessionManagerListener(object : SessionManagerListener<CastSession> {
-                    override fun onSessionEnded(session: CastSession, error: Int) {
-                        android.util.Log.d("CastManager", "Session ended, connecting to app: $appId")
+            // Launch coroutine to reconnect with a delay
+            GlobalScope.launch {
+                delay(1000) // Wait for session to fully end
 
-                        // Remove this listener to avoid multiple calls
-                        sessionManager.removeSessionManagerListener(this, CastSession::class.java)
+                android.util.Log.d("CastManager", "Session ended, now reconnecting with app: $appId")
 
-                        // Start a new session with the desired app
-                        GlobalScope.launch {
-                            delay(500)
+                // Get MediaRouter and find the route
+                val mediaRouter = androidx.mediarouter.media.MediaRouter.getInstance(context)
 
-                            android.util.Log.d("CastManager", "Starting new session with app: $appId")
+                // Find the route that matches our device
+                val route = mediaRouter.routes.find {
+                    it.name == savedDevice.friendlyName && !it.isDefault
+                }
 
-                            // Create CastOptions dynamically (though this usually doesn't work)
-                            // Instead, we'll use the MediaRouter approach
+                if (route != null) {
+                    android.util.Log.d("CastManager", "Found route: ${route.name}, selecting...")
 
-                            // Get MediaRouter and select the route again
-                            val mediaRouter = androidx.mediarouter.media.MediaRouter.getInstance(context)
+                    // Store app ID for use when session starts
+                    pendingAppId = appId
 
-                            // Find the route that matches our device
-                            val route = mediaRouter.routes.find {
-                                it.name == savedDevice.friendlyName && !it.isDefault
+                    // Register a one-time session started listener
+                    sessionManager.addSessionManagerListener(object : SessionManagerListener<CastSession> {
+                        override fun onSessionStarted(session: CastSession, sessionId: String) {
+                            android.util.Log.d("CastManager", "New session started with pending app: $pendingAppId")
+
+                            // If we have a pending app ID, try to launch it
+                            pendingAppId?.let { appId ->
+                                android.util.Log.d("CastManager", "Attempting to switch to app: $appId")
+
+                                // Send a message to switch to the app
+                                session.sendMessage("urn:x-cast:com.google.cast.system",
+                                    """{"type":"LAUNCH","appId":"$appId"}""")
+                                    ?.setResultCallback { result ->
+                                        if (result.status.isSuccess) {
+                                            android.util.Log.d("CastManager", "App launch message sent successfully")
+                                        } else {
+                                            android.util.Log.e("CastManager", "Failed to send app launch message: ${result.status}")
+                                        }
+                                    }
+
+                                pendingAppId = null // Clear the pending app
                             }
 
-                            if (route != null) {
-                                android.util.Log.d("CastManager", "Found route, selecting with app override")
-
-                                // Store app ID for use in the session started callback
-                                pendingAppId = appId
-
-                                // Select the route which will trigger a new Cast session
-                                mediaRouter.selectRoute(route)
-                            } else {
-                                android.util.Log.e("CastManager", "Could not find route for device")
-                            }
+                            // Remove this listener after use
+                            sessionManager.removeSessionManagerListener(this, CastSession::class.java)
                         }
+
+                        override fun onSessionEnded(session: CastSession, error: Int) {}
+                        override fun onSessionStarting(session: CastSession) {}
+                        override fun onSessionEnding(session: CastSession) {}
+                        override fun onSessionResuming(session: CastSession, sessionId: String) {}
+                        override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {}
+                        override fun onSessionResumeFailed(session: CastSession, error: Int) {}
+                        override fun onSessionSuspended(session: CastSession, reason: Int) {}
+                        override fun onSessionStartFailed(session: CastSession, error: Int) {
+                            android.util.Log.e("CastManager", "Session start failed: $error")
+                            sessionManager.removeSessionManagerListener(this, CastSession::class.java)
+                        }
+                    }, CastSession::class.java)
+
+                    // Select the route on the main thread
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        mediaRouter.selectRoute(route)
                     }
-
-                    override fun onSessionStarted(session: CastSession, sessionId: String) {}
-                    override fun onSessionStarting(session: CastSession) {}
-                    override fun onSessionEnding(session: CastSession) {}
-                    override fun onSessionResuming(session: CastSession, sessionId: String) {}
-                    override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {}
-                    override fun onSessionResumeFailed(session: CastSession, error: Int) {}
-                    override fun onSessionSuspended(session: CastSession, reason: Int) {}
-                    override fun onSessionStartFailed(session: CastSession, error: Int) {}
-                }, CastSession::class.java)
-
-            } catch (e: Exception) {
-                android.util.Log.e("CastManager", "Exception in launchApp: ${e.message}")
-                e.printStackTrace()
+                } else {
+                    android.util.Log.e("CastManager", "Could not find route for device: ${savedDevice.friendlyName}")
+                }
             }
         } else {
             android.util.Log.e("CastManager", "No Cast device connected")
