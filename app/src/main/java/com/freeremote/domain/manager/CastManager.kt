@@ -252,7 +252,6 @@ class CastManager @Inject constructor(
 
                             // Create CastOptions dynamically (though this usually doesn't work)
                             // Instead, we'll use the MediaRouter approach
-                            val context = castContext?.applicationContext ?: return@launch
 
                             // Get MediaRouter and select the route again
                             val mediaRouter = androidx.mediarouter.media.MediaRouter.getInstance(context)
