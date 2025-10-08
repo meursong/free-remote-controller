@@ -43,15 +43,15 @@ fun CastButton(
         AndroidView(
             modifier = modifier,
             factory = { ctx ->
-                // Create a themed context with a proper background color to avoid translucent background error
-                val themedContext = ContextThemeWrapper(activity, androidx.mediarouter.R.style.Theme_MediaRouter_Light)
+                // Create a themed context with a solid background color
+                val themedContext = ContextThemeWrapper(activity, com.freeremote.R.style.Theme_MediaRouter_Custom)
 
                 // Create a MediaRouteButton with the themed context
                 MediaRouteButton(themedContext).apply {
                     try {
                         // Wire up the button to Cast framework using the activity context
                         CastButtonFactory.setUpMediaRouteButton(activity, this)
-                        Log.d("CastButton", "Cast button initialized successfully with themed FragmentActivity")
+                        Log.d("CastButton", "Cast button initialized successfully with custom theme")
                     } catch (e: Exception) {
                         Log.e("CastButton", "Failed to setup Cast button", e)
                         visibility = android.view.View.GONE
