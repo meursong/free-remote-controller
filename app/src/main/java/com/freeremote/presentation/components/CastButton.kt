@@ -33,13 +33,13 @@ fun CastButton(
                 CastButtonFactory.setUpMediaRouteButton(context, this)
 
                 // Apply tint color to the icon
-                setRemoteIndicatorDrawable(R.drawable.mr_button_light)
-                drawable?.setTint(tint.toArgb())
+                // The MediaRouter library automatically provides the Cast icon
+                // No need to set custom drawable
             }
         },
         update = { button ->
-            // Update tint if it changes
-            button.drawable?.setTint(tint.toArgb())
+            // MediaRouteButton handles its own drawable internally
+            // Tinting is handled by the theme
         }
     )
 }
