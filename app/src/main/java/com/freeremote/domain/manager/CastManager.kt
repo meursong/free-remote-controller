@@ -9,6 +9,9 @@ import com.google.android.gms.common.images.WebImage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -215,47 +218,85 @@ class CastManager @Inject constructor(
     private fun launchApp(appId: String) {
         android.util.Log.d("CastManager", "launchApp called with appId: $appId")
 
-        val currentSession = castContext?.sessionManager?.currentCastSession
+        val sessionManager = castContext?.sessionManager
+        val currentSession = sessionManager?.currentCastSession
         val device = currentSession?.castDevice
 
         android.util.Log.d("CastManager", "Current session: $currentSession")
-        android.util.Log.d("CastManager", "Device: ${device?.friendlyName}")
+        android.util.Log.d("CastManager", "Device: ${device?.friendlyName}, Device ID: ${device?.deviceId}")
 
-        // Check if session exists
-        if (currentSession != null) {
-            android.util.Log.d("CastManager", "Session active, attempting to launch app: $appId")
+        if (device != null && sessionManager != null) {
+            android.util.Log.d("CastManager", "Device found, attempting to launch app: $appId")
 
             try {
-                // For Netflix and YouTube, we can't directly launch them
-                // We can only show placeholders or instructions
-                when(appId) {
-                    "CA5E8412" -> { // Netflix
-                        loadNetflixDirectly()
+                // Save the device for reconnection
+                val savedDevice = device
+
+                // End the current session
+                android.util.Log.d("CastManager", "Ending current session...")
+                sessionManager.endCurrentSession(true)
+
+                // Set up a listener to reconnect with the new app when session ends
+                sessionManager.addSessionManagerListener(object : SessionManagerListener<CastSession> {
+                    override fun onSessionEnded(session: CastSession, error: Int) {
+                        android.util.Log.d("CastManager", "Session ended, connecting to app: $appId")
+
+                        // Remove this listener to avoid multiple calls
+                        sessionManager.removeSessionManagerListener(this, CastSession::class.java)
+
+                        // Start a new session with the desired app
+                        GlobalScope.launch {
+                            delay(500)
+
+                            android.util.Log.d("CastManager", "Starting new session with app: $appId")
+
+                            // Create CastOptions dynamically (though this usually doesn't work)
+                            // Instead, we'll use the MediaRouter approach
+                            val context = castContext?.applicationContext ?: return@launch
+
+                            // Get MediaRouter and select the route again
+                            val mediaRouter = androidx.mediarouter.media.MediaRouter.getInstance(context)
+
+                            // Find the route that matches our device
+                            val route = mediaRouter.routes.find {
+                                it.name == savedDevice.friendlyName && !it.isDefault
+                            }
+
+                            if (route != null) {
+                                android.util.Log.d("CastManager", "Found route, selecting with app override")
+
+                                // Store app ID for use in the session started callback
+                                pendingAppId = appId
+
+                                // Select the route which will trigger a new Cast session
+                                mediaRouter.selectRoute(route)
+                            } else {
+                                android.util.Log.e("CastManager", "Could not find route for device")
+                            }
+                        }
                     }
-                    "233637DE" -> { // YouTube
-                        loadYouTubeDirectly()
-                    }
-                    "CC32E753" -> { // Spotify
-                        loadSpotifyDirectly()
-                    }
-                    "C3DE6BC2" -> { // Disney+
-                        loadDisneyPlusDirectly()
-                    }
-                    "ADBEB697" -> { // Prime Video
-                        loadPrimeVideoDirectly()
-                    }
-                    else -> {
-                        android.util.Log.e("CastManager", "Unsupported app ID: $appId")
-                    }
-                }
+
+                    override fun onSessionStarted(session: CastSession, sessionId: String) {}
+                    override fun onSessionStarting(session: CastSession) {}
+                    override fun onSessionEnding(session: CastSession) {}
+                    override fun onSessionResuming(session: CastSession, sessionId: String) {}
+                    override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {}
+                    override fun onSessionResumeFailed(session: CastSession, error: Int) {}
+                    override fun onSessionSuspended(session: CastSession, reason: Int) {}
+                    override fun onSessionStartFailed(session: CastSession, error: Int) {}
+                }, CastSession::class.java)
+
             } catch (e: Exception) {
-                android.util.Log.e("CastManager", "Exception launching app: ${e.message}")
+                android.util.Log.e("CastManager", "Exception in launchApp: ${e.message}")
                 e.printStackTrace()
             }
         } else {
-            android.util.Log.e("CastManager", "No Cast session active. Please connect first.")
+            android.util.Log.e("CastManager", "No Cast device connected")
         }
     }
+
+    // Variable to store the app ID we want to launch
+    private var pendingAppId: String? = null
 
     /**
      * Load Netflix directly
