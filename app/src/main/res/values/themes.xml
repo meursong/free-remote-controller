@@ -1,12 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FreeRemoteController" parent="android:Theme.Material.Light.NoActionBar" />
-
-    <!-- Custom theme for MediaRoute button with solid background -->
-    <style name="Theme.MediaRouter.Custom" parent="Theme.AppCompat.Light">
+    <!-- Main app theme using AppCompat for compatibility with MediaRouter -->
+    <style name="Theme.FreeRemoteController" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Ensure solid backgrounds for MediaRouter compatibility -->
         <item name="android:windowBackground">@android:color/white</item>
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryDark">@color/purple_700</item>
-        <item name="colorAccent">@color/teal_200</item>
+        <item name="android:colorBackground">@android:color/white</item>
+        <item name="colorPrimary">@android:color/holo_blue_dark</item>
+        <item name="colorPrimaryDark">@android:color/holo_blue_dark</item>
+        <item name="colorAccent">@android:color/holo_blue_light</item>
+        <!-- MediaRouter specific theming -->
+        <item name="mediaRouteTheme">@style/Theme.MediaRouter.Custom</item>
+    </style>
+
+    <!-- Custom theme for MediaRoute dialogs with guaranteed solid backgrounds -->
+    <style name="Theme.MediaRouter.Custom" parent="Theme.AppCompat.Light.Dialog">
+        <!-- Force solid white background to prevent translucent issues -->
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:colorBackground">@android:color/white</item>
+        <item name="android:colorBackgroundCacheHint">@android:color/white</item>
+        <item name="colorPrimary">@android:color/holo_blue_dark</item>
+        <item name="colorPrimaryDark">@android:color/holo_blue_dark</item>
+        <item name="colorAccent">@android:color/holo_blue_light</item>
+        <item name="colorControlNormal">@android:color/darker_gray</item>
+        <item name="android:colorControlNormal">@android:color/darker_gray</item>
+        <!-- Ensure dialog background is also solid -->
+        <item name="android:dialogTheme">@style/Theme.MediaRouter.Dialog</item>
+    </style>
+
+    <!-- Specific dialog theme with solid background -->
+    <style name="Theme.MediaRouter.Dialog" parent="Theme.AppCompat.Light.Dialog">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:colorBackground">@android:color/white</item>
+        <item name="android:colorBackgroundCacheHint">@android:color/white</item>
     </style>
 </resources>
