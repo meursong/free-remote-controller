@@ -9,10 +9,6 @@ import com.google.android.gms.common.images.WebImage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -218,312 +214,89 @@ class CastManager @Inject constructor(
     private fun launchApp(appId: String) {
         android.util.Log.d("CastManager", "launchApp called with appId: $appId")
 
-        val sessionManager = castContext?.sessionManager
-        val currentSession = sessionManager?.currentCastSession
-        val device = currentSession?.castDevice
+        val currentSession = castContext?.sessionManager?.currentCastSession
 
-        android.util.Log.d("CastManager", "Current session: $currentSession")
-        android.util.Log.d("CastManager", "Device: ${device?.friendlyName}, Device ID: ${device?.deviceId}")
+        if (currentSession != null && currentSession.isConnected) {
+            android.util.Log.d("CastManager", "Current session exists, loading app")
+            android.util.Log.d("CastManager", "Session details: ${currentSession.applicationMetadata?.applicationId}")
+            android.util.Log.d("CastManager", "RemoteMediaClient is ${if (remoteMediaClient != null) "available" else "NULL"}")
 
-        if (device != null && sessionManager != null) {
-            android.util.Log.d("CastManager", "Device found, attempting to launch app: $appId")
+            // Ensure we have a remote media client
+            if (remoteMediaClient == null) {
+                remoteMediaClient = currentSession.remoteMediaClient
+                android.util.Log.d("CastManager", "Refreshed RemoteMediaClient: ${if (remoteMediaClient != null) "SUCCESS" else "FAILED"}")
+            }
 
-            // Save the device for reconnection
-            val savedDevice = device
+            // Simply load the app as media content - this works with many smart TVs
+            when(appId) {
+                "CA5E8412" -> {
+                    // Netflix
+                    android.util.Log.d("CastManager", "Creating Netflix media info")
+                    val mediaInfo = MediaInfo.Builder("https://www.netflix.com/browse")
+                        .setStreamType(MediaInfo.STREAM_TYPE_NONE)
+                        .setContentType("text/html")
+                        .setMetadata(MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC).apply {
+                            putString(MediaMetadata.KEY_TITLE, "Netflix")
+                        })
+                        .build()
 
-            // End the current session
-            android.util.Log.d("CastManager", "Ending current session...")
-            sessionManager.endCurrentSession(true)
+                    android.util.Log.d("CastManager", "Loading Netflix media")
+                    val request = remoteMediaClient?.load(mediaInfo, MediaLoadOptions.Builder().build())
 
-            // Launch coroutine to reconnect with a delay
-            GlobalScope.launch {
-                delay(1000) // Wait for session to fully end
-
-                android.util.Log.d("CastManager", "Session ended, now reconnecting with app: $appId")
-
-                // Get MediaRouter and find the route
-                val mediaRouter = androidx.mediarouter.media.MediaRouter.getInstance(context)
-
-                // Find the route that matches our device
-                val route = mediaRouter.routes.find {
-                    it.name == savedDevice.friendlyName && !it.isDefault
-                }
-
-                if (route != null) {
-                    android.util.Log.d("CastManager", "Found route: ${route.name}, selecting...")
-
-                    // Store app ID for use when session starts
-                    pendingAppId = appId
-
-                    // Register a one-time session started listener
-                    sessionManager.addSessionManagerListener(object : SessionManagerListener<CastSession> {
-                        override fun onSessionStarted(session: CastSession, sessionId: String) {
-                            android.util.Log.d("CastManager", "New session started with pending app: $pendingAppId")
-
-                            // If we have a pending app ID, try to launch it
-                            pendingAppId?.let { appId ->
-                                android.util.Log.d("CastManager", "Attempting to switch to app: $appId")
-
-                                // Send a message to switch to the app
-                                session.sendMessage("urn:x-cast:com.google.cast.system",
-                                    """{"type":"LAUNCH","appId":"$appId"}""")
-                                    ?.setResultCallback { result ->
-                                        if (result.status.isSuccess) {
-                                            android.util.Log.d("CastManager", "App launch message sent successfully")
-                                        } else {
-                                            android.util.Log.e("CastManager", "Failed to send app launch message: ${result.status}")
-                                        }
-                                    }
-
-                                pendingAppId = null // Clear the pending app
+                    if (request != null) {
+                        android.util.Log.d("CastManager", "Load request created, adding callback")
+                        request.setResultCallback { result ->
+                            android.util.Log.d("CastManager", "Netflix callback triggered")
+                            if (result.status.isSuccess) {
+                                android.util.Log.d("CastManager", "Netflix loaded successfully")
+                            } else {
+                                android.util.Log.e("CastManager", "Failed to load Netflix: ${result.status.statusMessage}")
+                                android.util.Log.e("CastManager", "Status code: ${result.status.statusCode}")
                             }
-
-                            // Remove this listener after use
-                            sessionManager.removeSessionManagerListener(this, CastSession::class.java)
                         }
-
-                        override fun onSessionEnded(session: CastSession, error: Int) {}
-                        override fun onSessionStarting(session: CastSession) {}
-                        override fun onSessionEnding(session: CastSession) {}
-                        override fun onSessionResuming(session: CastSession, sessionId: String) {}
-                        override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {}
-                        override fun onSessionResumeFailed(session: CastSession, error: Int) {}
-                        override fun onSessionSuspended(session: CastSession, reason: Int) {}
-                        override fun onSessionStartFailed(session: CastSession, error: Int) {
-                            android.util.Log.e("CastManager", "Session start failed: $error")
-                            sessionManager.removeSessionManagerListener(this, CastSession::class.java)
-                        }
-                    }, CastSession::class.java)
-
-                    // Select the route on the main thread
-                    android.os.Handler(android.os.Looper.getMainLooper()).post {
-                        mediaRouter.selectRoute(route)
+                    } else {
+                        android.util.Log.e("CastManager", "Failed to create load request - remoteMediaClient might be null")
                     }
-                } else {
-                    android.util.Log.e("CastManager", "Could not find route for device: ${savedDevice.friendlyName}")
+                }
+                "233637DE" -> {
+                    // YouTube
+                    android.util.Log.d("CastManager", "Creating YouTube media info")
+                    val mediaInfo = MediaInfo.Builder("https://www.youtube.com/tv")
+                        .setStreamType(MediaInfo.STREAM_TYPE_NONE)
+                        .setContentType("text/html")
+                        .setMetadata(MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC).apply {
+                            putString(MediaMetadata.KEY_TITLE, "YouTube")
+                        })
+                        .build()
+
+                    android.util.Log.d("CastManager", "Loading YouTube media")
+                    val request = remoteMediaClient?.load(mediaInfo, MediaLoadOptions.Builder().build())
+
+                    if (request != null) {
+                        android.util.Log.d("CastManager", "Load request created, adding callback")
+                        request.setResultCallback { result ->
+                            android.util.Log.d("CastManager", "YouTube callback triggered")
+                            if (result.status.isSuccess) {
+                                android.util.Log.d("CastManager", "YouTube loaded successfully")
+                            } else {
+                                android.util.Log.e("CastManager", "Failed to load YouTube: ${result.status.statusMessage}")
+                                android.util.Log.e("CastManager", "Status code: ${result.status.statusCode}")
+                            }
+                        }
+                    } else {
+                        android.util.Log.e("CastManager", "Failed to create load request - remoteMediaClient might be null")
+                    }
+                }
+                else -> {
+                    android.util.Log.e("CastManager", "Unsupported app ID: $appId")
                 }
             }
         } else {
-            android.util.Log.e("CastManager", "No Cast device connected")
+            android.util.Log.e("CastManager", "No Cast session active. Please connect to a device first.")
+            android.util.Log.e("CastManager", "Session: $currentSession, Connected: ${currentSession?.isConnected}")
         }
     }
 
-    // Variable to store the app ID we want to launch
-    private var pendingAppId: String? = null
-
-    /**
-     * Load Netflix directly
-     */
-    private fun loadNetflixDirectly() {
-        android.util.Log.d("CastManager", "Attempting to load Netflix via Default Media Receiver")
-
-        try {
-            // Use Default Media Receiver to show Netflix logo/placeholder
-            val mediaMetadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE).apply {
-                putString(MediaMetadata.KEY_TITLE, "Netflix")
-                putString(MediaMetadata.KEY_SUBTITLE, "Open Netflix on your TV")
-                addImage(WebImage(Uri.parse("https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg")))
-            }
-
-            val mediaInfo = MediaInfo.Builder("https://www.netflix.com")
-                .setStreamType(MediaInfo.STREAM_TYPE_NONE)
-                .setContentType("text/html")
-                .setMetadata(mediaMetadata)
-                .build()
-
-            val loadOptions = MediaLoadOptions.Builder()
-                .setAutoplay(false)
-                .build()
-
-            remoteMediaClient?.load(mediaInfo, loadOptions)
-                ?.setResultCallback { result ->
-                    if (result.status.isSuccess) {
-                        android.util.Log.d("CastManager", "Netflix placeholder loaded")
-                        // Show message to user
-                        android.util.Log.i("CastManager", "Please use the Netflix app to cast content")
-                    } else {
-                        android.util.Log.e("CastManager", "Failed to load Netflix: ${result.status}")
-                    }
-                }
-        } catch (e: Exception) {
-            android.util.Log.e("CastManager", "Error loading Netflix: ${e.message}")
-        }
-    }
-
-    /**
-     * Load YouTube directly
-     */
-    private fun loadYouTubeDirectly() {
-        android.util.Log.d("CastManager", "Attempting to load YouTube TV")
-
-        try {
-            // Try loading YouTube TV URL which sometimes works on smart TVs
-            val mediaMetadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE).apply {
-                putString(MediaMetadata.KEY_TITLE, "YouTube")
-                putString(MediaMetadata.KEY_SUBTITLE, "Loading YouTube...")
-                addImage(WebImage(Uri.parse("https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg")))
-            }
-
-            // YouTube TV URL that may work on some devices
-            val mediaInfo = MediaInfo.Builder("https://www.youtube.com/tv")
-                .setStreamType(MediaInfo.STREAM_TYPE_NONE)
-                .setContentType("text/html")
-                .setMetadata(mediaMetadata)
-                .build()
-
-            val loadOptions = MediaLoadOptions.Builder()
-                .setAutoplay(false)
-                .build()
-
-            remoteMediaClient?.load(mediaInfo, loadOptions)
-                ?.setResultCallback { result ->
-                    if (result.status.isSuccess) {
-                        android.util.Log.d("CastManager", "YouTube TV loaded")
-                    } else {
-                        android.util.Log.e("CastManager", "Failed to load YouTube: ${result.status}")
-                    }
-                }
-        } catch (e: Exception) {
-            android.util.Log.e("CastManager", "Error loading YouTube: ${e.message}")
-        }
-    }
-
-    /**
-     * Load Spotify directly
-     */
-    private fun loadSpotifyDirectly() {
-        android.util.Log.d("CastManager", "Attempting to load Spotify")
-
-        try {
-            val mediaMetadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_MUSIC_TRACK).apply {
-                putString(MediaMetadata.KEY_TITLE, "Spotify")
-                putString(MediaMetadata.KEY_SUBTITLE, "Music Streaming")
-                addImage(WebImage(Uri.parse("https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png")))
-            }
-
-            val mediaInfo = MediaInfo.Builder("https://open.spotify.com")
-                .setStreamType(MediaInfo.STREAM_TYPE_NONE)
-                .setContentType("text/html")
-                .setMetadata(mediaMetadata)
-                .build()
-
-            val loadOptions = MediaLoadOptions.Builder()
-                .setAutoplay(false)
-                .build()
-
-            remoteMediaClient?.load(mediaInfo, loadOptions)
-                ?.setResultCallback { result ->
-                    if (result.status.isSuccess) {
-                        android.util.Log.d("CastManager", "Spotify placeholder loaded")
-                    } else {
-                        android.util.Log.e("CastManager", "Failed to load Spotify: ${result.status}")
-                    }
-                }
-        } catch (e: Exception) {
-            android.util.Log.e("CastManager", "Error loading Spotify: ${e.message}")
-        }
-    }
-
-    /**
-     * Load Disney+ directly
-     */
-    private fun loadDisneyPlusDirectly() {
-        android.util.Log.d("CastManager", "Attempting to load Disney+")
-
-        try {
-            val mediaMetadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE).apply {
-                putString(MediaMetadata.KEY_TITLE, "Disney+")
-                putString(MediaMetadata.KEY_SUBTITLE, "Streaming Service")
-            }
-
-            val mediaInfo = MediaInfo.Builder("https://www.disneyplus.com")
-                .setStreamType(MediaInfo.STREAM_TYPE_NONE)
-                .setContentType("text/html")
-                .setMetadata(mediaMetadata)
-                .build()
-
-            val loadOptions = MediaLoadOptions.Builder()
-                .setAutoplay(false)
-                .build()
-
-            remoteMediaClient?.load(mediaInfo, loadOptions)
-                ?.setResultCallback { result ->
-                    if (result.status.isSuccess) {
-                        android.util.Log.d("CastManager", "Disney+ placeholder loaded")
-                    } else {
-                        android.util.Log.e("CastManager", "Failed to load Disney+: ${result.status}")
-                    }
-                }
-        } catch (e: Exception) {
-            android.util.Log.e("CastManager", "Error loading Disney+: ${e.message}")
-        }
-    }
-
-    /**
-     * Load Prime Video directly
-     */
-    private fun loadPrimeVideoDirectly() {
-        android.util.Log.d("CastManager", "Attempting to load Prime Video")
-
-        try {
-            val mediaMetadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE).apply {
-                putString(MediaMetadata.KEY_TITLE, "Prime Video")
-                putString(MediaMetadata.KEY_SUBTITLE, "Amazon Streaming")
-            }
-
-            val mediaInfo = MediaInfo.Builder("https://www.primevideo.com")
-                .setStreamType(MediaInfo.STREAM_TYPE_NONE)
-                .setContentType("text/html")
-                .setMetadata(mediaMetadata)
-                .build()
-
-            val loadOptions = MediaLoadOptions.Builder()
-                .setAutoplay(false)
-                .build()
-
-            remoteMediaClient?.load(mediaInfo, loadOptions)
-                ?.setResultCallback { result ->
-                    if (result.status.isSuccess) {
-                        android.util.Log.d("CastManager", "Prime Video placeholder loaded")
-                    } else {
-                        android.util.Log.e("CastManager", "Failed to load Prime Video: ${result.status}")
-                    }
-                }
-        } catch (e: Exception) {
-            android.util.Log.e("CastManager", "Error loading Prime Video: ${e.message}")
-        }
-    }
-
-    /**
-     * Helper method to load media with app-specific handling
-     */
-    private fun loadMediaForApp(url: String, appName: String, appId: String) {
-        val mediaMetadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC).apply {
-            putString(MediaMetadata.KEY_TITLE, appName)
-        }
-
-        val mediaInfo = MediaInfo.Builder(url)
-            .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
-            .setContentType("application/dash+xml")
-            .setMetadata(mediaMetadata)
-            .setCustomData(org.json.JSONObject().apply {
-                put("appId", appId)
-            })
-            .build()
-
-        val loadOptions = MediaLoadOptions.Builder()
-            .setAutoplay(true)
-            .build()
-
-        remoteMediaClient?.load(mediaInfo, loadOptions)
-            ?.setResultCallback { result ->
-                if (result.status.isSuccess) {
-                    android.util.Log.d("CastManager", "Successfully loaded media for app: $appName")
-                } else {
-                    android.util.Log.e("CastManager", "Failed to load media: ${result.status}")
-                }
-            }
-    }
 
     /**
      * Loads media content onto the Cast device with metadata.

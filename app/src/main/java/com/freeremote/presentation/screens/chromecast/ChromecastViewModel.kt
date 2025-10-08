@@ -1,8 +1,10 @@
 package com.freeremote.presentation.screens.chromecast
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.freeremote.domain.manager.CastManager
+import com.freeremote.domain.manager.DialManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,11 +13,18 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ChromecastViewModel @Inject constructor(
-    private val castManager: CastManager
+    private val castManager: CastManager,
+    private val dialManager: DialManager
 ) : ViewModel() {
 
     private val _castState = MutableStateFlow<CastState>(CastState.NotConnected)
     val castState: StateFlow<CastState> = _castState
+
+    private val _dialDevices = MutableStateFlow<List<DialManager.DialDevice>>(emptyList())
+    val dialDevices: StateFlow<List<DialManager.DialDevice>> = _dialDevices
+
+    private val _dialState = MutableStateFlow<DialManager.ConnectionState>(DialManager.ConnectionState.NotConnected)
+    val dialState: StateFlow<DialManager.ConnectionState> = _dialState
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
@@ -30,9 +39,13 @@ class ChromecastViewModel @Inject constructor(
     val volume: StateFlow<Float> = _volume
 
     private var isMuted = false
+    private var useDialForApps = false // Flag to determine whether to use DIAL protocol
 
     init {
         observeCastState()
+        observeDialState()
+        // Automatically discover DIAL devices
+        discoverDialDevices()
     }
 
     private fun observeCastState() {
@@ -40,17 +53,53 @@ class ChromecastViewModel @Inject constructor(
             castManager.deviceState.collect { state ->
                 _castState.value = when (state) {
                     is CastManager.CastDeviceState.Connected -> {
+                        useDialForApps = false // Use Cast when connected
                         CastState.Connected(state.deviceName)
                     }
                     is CastManager.CastDeviceState.Connecting -> {
                         CastState.Connecting
                     }
                     is CastManager.CastDeviceState.NotConnected -> {
+                        useDialForApps = true // Fall back to DIAL when Cast is not connected
                         CastState.NotConnected
                     }
                 }
             }
         }
+    }
+
+    private fun observeDialState() {
+        viewModelScope.launch {
+            dialManager.connectionState.collect { state ->
+                _dialState.value = state
+                Log.d("ChromecastViewModel", "DIAL state changed: $state")
+            }
+        }
+
+        viewModelScope.launch {
+            dialManager.availableDevices.collect { devices ->
+                _dialDevices.value = devices
+                Log.d("ChromecastViewModel", "DIAL devices updated: ${devices.size} device(s)")
+
+                // Auto-connect to first available DIAL device if not connected
+                if (devices.isNotEmpty() && _dialState.value is DialManager.ConnectionState.DevicesFound) {
+                    val firstDevice = devices.first()
+                    Log.d("ChromecastViewModel", "Auto-connecting to DIAL device: ${firstDevice.name}")
+                    dialManager.connectToDevice(firstDevice)
+                }
+            }
+        }
+    }
+
+    fun discoverDialDevices() {
+        viewModelScope.launch {
+            Log.d("ChromecastViewModel", "Starting DIAL device discovery...")
+            dialManager.discoverDevices()
+        }
+    }
+
+    fun connectToDialDevice(device: DialManager.DialDevice) {
+        dialManager.connectToDevice(device)
     }
 
     // Device discovery is handled automatically by the MediaRouteButton
@@ -113,23 +162,48 @@ class ChromecastViewModel @Inject constructor(
 
     // App Launching
     fun launchNetflix() {
-        castManager.launchNetflix()
+        // Always try DIAL first for Netflix
+        Log.d("ChromecastViewModel", "Launch Netflix - Forcing DIAL protocol")
+        dialManager.launchNetflix()
     }
 
     fun launchYouTube() {
-        castManager.launchYouTube()
+        // Always try DIAL first for YouTube
+        Log.d("ChromecastViewModel", "Launch YouTube - Forcing DIAL protocol")
+        dialManager.launchYouTube()
     }
 
     fun launchDisneyPlus() {
-        castManager.launchDisneyPlus()
+        Log.d("ChromecastViewModel", "Launch Disney+ - Using DIAL: $useDialForApps")
+        if (useDialForApps || _castState.value !is CastState.Connected) {
+            // Use DIAL protocol
+            dialManager.launchDisneyPlus()
+        } else {
+            // Use Cast SDK
+            castManager.launchDisneyPlus()
+        }
     }
 
     fun launchPrimeVideo() {
-        castManager.launchPrimeVideo()
+        Log.d("ChromecastViewModel", "Launch Prime Video - Using DIAL: $useDialForApps")
+        if (useDialForApps || _castState.value !is CastState.Connected) {
+            // Use DIAL protocol
+            dialManager.launchPrimeVideo()
+        } else {
+            // Use Cast SDK
+            castManager.launchPrimeVideo()
+        }
     }
 
     fun launchSpotify() {
-        castManager.launchSpotify()
+        Log.d("ChromecastViewModel", "Launch Spotify - Using DIAL: $useDialForApps")
+        if (useDialForApps || _castState.value !is CastState.Connected) {
+            // Use DIAL protocol
+            dialManager.launchSpotify()
+        } else {
+            // Use Cast SDK
+            castManager.launchSpotify()
+        }
     }
 
     // Quick Actions
