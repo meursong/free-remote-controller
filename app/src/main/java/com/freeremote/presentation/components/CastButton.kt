@@ -1,11 +1,15 @@
 package com.freeremote.presentation.components
 
+import android.app.Activity
 import android.util.Log
+import android.view.ContextThemeWrapper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.fragment.app.FragmentActivity
 import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastContext
@@ -22,7 +26,9 @@ fun CastButton(
     modifier: Modifier = Modifier,
     tint: Color = Color.White
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
+    val activity = context as? Activity
+
     val isCastAvailable = remember {
         try {
             CastContext.getSharedInstance(context)
@@ -33,15 +39,19 @@ fun CastButton(
         }
     }
 
-    if (isCastAvailable) {
+    if (isCastAvailable && activity is FragmentActivity) {
         AndroidView(
             modifier = modifier,
             factory = { ctx ->
-                MediaRouteButton(ctx).apply {
+                // Create a themed context with a proper background color to avoid translucent background error
+                val themedContext = ContextThemeWrapper(activity, androidx.mediarouter.R.style.Theme_MediaRouter_Light)
+
+                // Create a MediaRouteButton with the themed context
+                MediaRouteButton(themedContext).apply {
                     try {
-                        // Wire up the button to Cast framework
-                        CastButtonFactory.setUpMediaRouteButton(ctx, this)
-                        Log.d("CastButton", "Cast button initialized successfully")
+                        // Wire up the button to Cast framework using the activity context
+                        CastButtonFactory.setUpMediaRouteButton(activity, this)
+                        Log.d("CastButton", "Cast button initialized successfully with themed FragmentActivity")
                     } catch (e: Exception) {
                         Log.e("CastButton", "Failed to setup Cast button", e)
                         visibility = android.view.View.GONE
@@ -52,6 +62,8 @@ fun CastButton(
                 // MediaRouteButton handles its own state internally
             }
         )
+    } else if (isCastAvailable) {
+        Log.w("CastButton", "Cast is available but activity is not FragmentActivity: ${activity?.javaClass?.simpleName}")
     }
 }
 
