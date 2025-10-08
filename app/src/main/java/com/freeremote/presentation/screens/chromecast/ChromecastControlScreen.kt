@@ -1,11 +1,9 @@
 package com.freeremote.presentation.screens.chromecast
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,10 +13,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,494 +24,550 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.freeremote.domain.manager.DialManager
 import com.freeremote.presentation.components.CastButton
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChromecastControlScreen(
     navController: NavController,
     viewModel: ChromecastViewModel = hiltViewModel()
 ) {
     val haptic = LocalHapticFeedback.current
-    val context = LocalContext.current
     val deviceState by viewModel.castState.collectAsState()
-    val isPlaying by viewModel.isPlaying.collectAsState()
-    val currentPosition by viewModel.currentPosition.collectAsState()
-    val duration by viewModel.duration.collectAsState()
+    val dialState by viewModel.dialState.collectAsState()
     val volume by viewModel.volume.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Chromecast Control", fontWeight = FontWeight.Bold)
-                        when (val state = deviceState) {
-                            is ChromecastViewModel.CastState.Connected -> {
-                                Text(
-                                    text = "Connected to ${state.deviceName}",
-                                    fontSize = 12.sp,
-                                    color = Color.Green
-                                )
-                            }
-                            is ChromecastViewModel.CastState.Connecting -> {
-                                Text(
-                                    text = "Connecting...",
-                                    fontSize = 12.sp,
-                                    color = Color.Yellow
-                                )
-                            }
-                            else -> {
-                                Text(
-                                    text = "Not connected",
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    // Proper Cast button that shows device selector
-                    CastButton(
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
-                )
-            )
+    // Get device name from either Cast or DIAL connection
+    val deviceName = when (val state = deviceState) {
+        is ChromecastViewModel.CastState.Connected -> state.deviceName
+        else -> when (val dState = dialState) {
+            is DialManager.ConnectionState.Connected -> dState.device.name
+            else -> "light house"
         }
-    ) { paddingValues ->
-        Box(
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
-                .padding(paddingValues)
+                .padding(vertical = 24.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            LazyColumn(
+            // Top Bar with device name and controls
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Streaming Apps Section
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Launch Apps",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                modifier = Modifier.padding(bottom = 12.dp)
-                            )
-
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                item {
-                                    AppButton(
-                                        name = "Netflix",
-                                        backgroundColor = Color(0xFFE50914),
-                                        onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.launchNetflix()
-                                        }
-                                    )
-                                }
-                                item {
-                                    AppButton(
-                                        name = "YouTube",
-                                        backgroundColor = Color(0xFFFF0000),
-                                        onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.launchYouTube()
-                                        }
-                                    )
-                                }
-                                item {
-                                    AppButton(
-                                        name = "Disney+",
-                                        backgroundColor = Color(0xFF113CCF),
-                                        onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.launchDisneyPlus()
-                                        }
-                                    )
-                                }
-                                item {
-                                    AppButton(
-                                        name = "Prime",
-                                        backgroundColor = Color(0xFF00A8E1),
-                                        onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.launchPrimeVideo()
-                                        }
-                                    )
-                                }
-                                item {
-                                    AppButton(
-                                        name = "Spotify",
-                                        backgroundColor = Color(0xFF1DB954),
-                                        onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.launchSpotify()
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                // Settings button
+                IconButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.openSettings()
+                }) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
 
-                // Media Controls Section
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Media Controls",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-
-                            // Playback controls
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                MediaControlButton(
-                                    icon = Icons.Filled.SkipPrevious,
-                                    contentDescription = "Previous",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        viewModel.skipBackward(30)
-                                    },
-                                    size = 48.dp
-                                )
-
-                                MediaControlButton(
-                                    icon = Icons.Filled.Replay10,
-                                    contentDescription = "Rewind 10s",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        viewModel.skipBackward()
-                                    },
-                                    size = 48.dp
-                                )
-
-                                MediaControlButton(
-                                    icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                    contentDescription = if (isPlaying) "Pause" else "Play",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        viewModel.togglePlayPause()
-                                    },
-                                    size = 64.dp,
-                                    backgroundColor = Color(0xFF48484A)
-                                )
-
-                                MediaControlButton(
-                                    icon = Icons.Filled.Forward10,
-                                    contentDescription = "Forward 10s",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        viewModel.skipForward()
-                                    },
-                                    size = 48.dp
-                                )
-
-                                MediaControlButton(
-                                    icon = Icons.Filled.SkipNext,
-                                    contentDescription = "Next",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        viewModel.skipForward(30)
-                                    },
-                                    size = 48.dp
-                                )
-                            }
-
-                            // Stop button
-                            Spacer(modifier = Modifier.height(16.dp))
-                            MediaControlButton(
-                                icon = Icons.Filled.Stop,
-                                contentDescription = "Stop",
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.stop()
-                                },
-                                size = 48.dp,
-                                backgroundColor = Color(0xFFFF453A)
-                            )
-
-                            // Progress bar
-                            if (duration > 0) {
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Column(
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Slider(
-                                        value = currentPosition.toFloat(),
-                                        onValueChange = { newValue ->
-                                            viewModel.seek(newValue.toLong())
-                                        },
-                                        valueRange = 0f..duration.toFloat(),
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = Color.White,
-                                            activeTrackColor = Color.White,
-                                            inactiveTrackColor = Color.Gray
-                                        )
-                                    )
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = formatTime(currentPosition),
-                                            color = Color.Gray,
-                                            fontSize = 12.sp
-                                        )
-                                        Text(
-                                            text = formatTime(duration),
-                                            color = Color.Gray,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                // Device name with dropdown
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Circle,
+                        contentDescription = "Status",
+                        tint = if (deviceState is ChromecastViewModel.CastState.Connected ||
+                                  dialState is DialManager.ConnectionState.Connected)
+                            Color.Green else Color.Gray,
+                        modifier = Modifier.size(8.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = deviceName,
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = "Select device",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
 
-                // Volume Control Section
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Volume Control",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                modifier = Modifier.padding(bottom = 12.dp)
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(onClick = {
-                                    viewModel.toggleMute()
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                }) {
-                                    Icon(
-                                        if (volume == 0f) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
-                                        contentDescription = "Mute",
-                                        tint = Color.White
-                                    )
-                                }
-
-                                Slider(
-                                    value = volume,
-                                    onValueChange = { newVolume ->
-                                        viewModel.setVolume(newVolume)
-                                    },
-                                    valueRange = 0f..1f,
-                                    modifier = Modifier.weight(1f),
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = Color.White,
-                                        activeTrackColor = Color.White,
-                                        inactiveTrackColor = Color.Gray
-                                    )
-                                )
-
-                                Text(
-                                    text = "${(volume * 100).toInt()}%",
-                                    color = Color.White,
-                                    modifier = Modifier.width(50.dp),
-                                    textAlign = TextAlign.End
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Quick Actions
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Quick Actions",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                modifier = Modifier.padding(bottom = 12.dp)
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                QuickActionButton(
-                                    icon = Icons.Filled.Home,
-                                    label = "Home",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        viewModel.goHome()
-                                    }
-                                )
-                                QuickActionButton(
-                                    icon = Icons.Filled.Subtitles,
-                                    label = "Subtitles",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        viewModel.toggleSubtitles()
-                                    }
-                                )
-                                QuickActionButton(
-                                    icon = Icons.Filled.Settings,
-                                    label = "Settings",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        viewModel.openSettings()
-                                    }
-                                )
-                                QuickActionButton(
-                                    icon = Icons.Filled.PowerSettingsNew,
-                                    label = "Disconnect",
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        viewModel.disconnect()
-                                    }
-                                )
-                            }
-                        }
-                    }
+                // Power button
+                IconButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.disconnect()
+                }) {
+                    Icon(
+                        Icons.Default.PowerSettingsNew,
+                        contentDescription = "Power",
+                        tint = Color.Green,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
+
+            // App Launcher Section
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                AppLauncherButton(
+                    appName = "Netflix",
+                    backgroundColor = Color(0xFFE50914),
+                    textColor = Color.White,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.launchNetflix()
+                    }
+                )
+                AppLauncherButton(
+                    appName = "YouTube",
+                    backgroundColor = Color(0xFFFF0000),
+                    textColor = Color.White,
+                    isYouTube = true,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.launchYouTube()
+                    }
+                )
+                AppLauncherButton(
+                    appName = "티빙\n(TVING)",
+                    backgroundColor = Color(0xFFFF153C),
+                    textColor = Color.White,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.launchDisneyPlus() // Placeholder
+                    }
+                )
+                AppLauncherButton(
+                    appName = "Wavve\n(웨이브)",
+                    backgroundColor = Color(0xFF0066FF),
+                    textColor = Color.White,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.launchPrimeVideo() // Placeholder
+                    }
+                )
+            }
+
+            // Circular D-Pad Control
+            Box(
+                modifier = Modifier
+                    .size(280.dp)
+                    .align(Alignment.CenterHorizontally),
+                contentAlignment = Alignment.Center
+            ) {
+                // Outer circle with gradient border
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.sweepGradient(
+                                colors = listOf(
+                                    Color(0xFF6A4C93),
+                                    Color(0xFF4361EE),
+                                    Color(0xFF3F37C9),
+                                    Color(0xFF6A4C93)
+                                )
+                            )
+                        )
+                        .padding(3.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black)
+                )
+
+                // Direction buttons
+                // Up
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        // Add navigation up logic
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 20.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Up",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                // Down
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        // Add navigation down logic
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 20.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Down",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                // Left
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.skipBackward()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 20.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowLeft,
+                        contentDescription = "Left",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                // Right
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.skipForward()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 20.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowRight,
+                        contentDescription = "Right",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                // Center OK button
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .border(
+                            width = 2.dp,
+                            brush = Brush.sweepGradient(
+                                colors = listOf(
+                                    Color(0xFF6A4C93),
+                                    Color(0xFF4361EE),
+                                    Color(0xFF3F37C9),
+                                    Color(0xFF6A4C93)
+                                )
+                            ),
+                            shape = CircleShape
+                        )
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.togglePlayPause()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Empty center button - you can add "OK" text or play/pause icon here if needed
+                }
+            }
+
+            // Page indicator dots
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                repeat(3) { index ->
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .padding(horizontal = 4.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (index == 0) Color.White else Color.Gray
+                            )
+                    )
+                }
+            }
+
+            // Bottom Control Buttons
+            Column {
+                // Volume and Channel controls
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Volume controls
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        VolumeButton(
+                            icon = Icons.Default.Add,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.setVolume(minOf(1f, volume + 0.1f))
+                            }
+                        )
+                        Text(
+                            "VOL",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        Text(
+                            "${(volume * 100).toInt()}",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        VolumeButton(
+                            icon = Icons.Default.Remove,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.setVolume(maxOf(0f, volume - 0.1f))
+                            }
+                        )
+                    }
+
+                    // Center buttons
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        BottomControlButton(
+                            icon = Icons.Default.Keyboard,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                // Add keyboard action
+                            }
+                        )
+                        BottomControlButton(
+                            icon = Icons.Default.Home,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.goHome()
+                            }
+                        )
+                        BottomControlButton(
+                            icon = Icons.Default.Apps,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                // Add apps grid action
+                            }
+                        )
+                    }
+
+                    // Channel controls (placeholder)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        VolumeButton(
+                            icon = Icons.Default.KeyboardArrowUp,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                // Add channel up
+                            }
+                        )
+                        Text(
+                            "CH",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        VolumeButton(
+                            icon = Icons.Default.KeyboardArrowDown,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                // Add channel down
+                            }
+                        )
+                    }
+                }
+
+                // Bottom row buttons
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 40.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    BottomControlButton(
+                        icon = Icons.Default.VolumeUp,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.toggleMute()
+                        }
+                    )
+                    BottomControlButton(
+                        icon = Icons.Default.Mic,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            // Add voice control
+                        }
+                    )
+                    BottomControlButton(
+                        icon = Icons.Default.ArrowBack,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            navController.navigateUp()
+                        }
+                    )
+                }
+
+                // Navigation bar buttons
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Icon(
+                        Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Icon(
+                        Icons.Default.Circle,
+                        contentDescription = "Home",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // Cast button (hidden but functional)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        ) {
+            CastButton(
+                modifier = Modifier.size(0.dp) // Hidden but still functional
+            )
         }
     }
 }
 
 @Composable
-fun AppButton(
-    name: String,
+fun AppLauncherButton(
+    appName: String,
     backgroundColor: Color,
+    textColor: Color,
+    isYouTube: Boolean = false,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .size(80.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .size(width = 75.dp, height = 75.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = name,
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center
-        )
+        if (isYouTube) {
+            // YouTube specific design with play button
+            Icon(
+                Icons.Default.PlayArrow,
+                contentDescription = "YouTube",
+                tint = Color.White,
+                modifier = Modifier.size(36.dp)
+            )
+        } else {
+            Text(
+                text = when {
+                    appName == "Netflix" -> "N"
+                    appName.contains("Wavve") -> "W"
+                    appName.contains("TVING") -> "티빙"
+                    else -> appName.take(1)
+                },
+                color = textColor,
+                fontSize = if (appName.contains("TVING")) 16.sp else 28.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
 @Composable
-fun MediaControlButton(
+fun VolumeButton(
     icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-    size: androidx.compose.ui.unit.Dp,
-    backgroundColor: Color = Color(0xFF2C2C2E)
+    onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(backgroundColor)
+            .size(width = 60.dp, height = 40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF4361EE),
+                        Color(0xFF3F37C9)
+                    )
+                )
+            )
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Icon(
             icon,
-            contentDescription = contentDescription,
+            contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(size * 0.6f)
+            modifier = Modifier.size(24.dp)
         )
     }
 }
 
 @Composable
-fun QuickActionButton(
+fun BottomControlButton(
     icon: ImageVector,
-    label: String,
     onClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
+    Box(
+        modifier = Modifier
+            .size(50.dp)
+            .clip(CircleShape)
+            .background(Color(0xFF1C1C1E))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF2C2C2E)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = label,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            color = Color.Gray,
-            fontSize = 11.sp
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
         )
-    }
-}
-
-fun formatTime(milliseconds: Long): String {
-    val seconds = (milliseconds / 1000) % 60
-    val minutes = (milliseconds / (1000 * 60)) % 60
-    val hours = milliseconds / (1000 * 60 * 60)
-
-    return if (hours > 0) {
-        String.format("%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format("%d:%02d", minutes, seconds)
     }
 }
