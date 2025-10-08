@@ -49,3 +49,13 @@
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 -keep class * extends dagger.hilt.android.lifecycle.HiltViewModel { *; }
+
+# Google Cast
+-keep class com.google.android.gms.cast.** { *; }
+-keep class com.google.android.gms.cast.framework.** { *; }
+-keep class androidx.mediarouter.** { *; }
+-dontwarn com.google.android.gms.cast.**
+-dontwarn androidx.mediarouter.**
+
+# Keep CastOptionsProvider
+-keep class com.freeremote.CastOptionsProvider { *; }

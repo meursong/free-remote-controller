@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.freeremote.presentation.navigation.RemoteNavHost
 import com.freeremote.presentation.theme.FreeRemoteControllerTheme
-import com.google.android.gms.cast.framework.CastContext
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -33,26 +32,50 @@ class MainActivity : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("MainActivity", "onCreate started")
 
-        // Initialize Cast context early to prevent crashes
+        // Initialize Cast context in a separate method - completely optional
+        initializeCastSafely()
+
+        Log.d("MainActivity", "Setting up Compose UI...")
+
         try {
-            CastContext.getSharedInstance(this)
-            Log.d("MainActivity", "Cast context initialized successfully")
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Failed to initialize Cast context", e)
-            // App can still run without Cast support
-        }
-
-        setContent {
-            FreeRemoteControllerTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val navController = rememberNavController()
-                    RemoteNavHost(navController = navController)
+            setContent {
+                FreeRemoteControllerTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        val navController = rememberNavController()
+                        RemoteNavHost(navController = navController)
+                    }
                 }
             }
+            Log.d("MainActivity", "Compose UI setup completed")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to setup Compose UI", e)
+            finish() // Close the app if UI setup fails
+        }
+    }
+
+    private fun initializeCastSafely() {
+        try {
+            Log.d("MainActivity", "Checking if Cast SDK is available...")
+            // Try to load the Cast class first
+            Class.forName("com.google.android.gms.cast.framework.CastContext")
+            Log.d("MainActivity", "Cast SDK found, attempting initialization...")
+
+            // Use reflection to avoid direct dependency
+            val castContextClass = Class.forName("com.google.android.gms.cast.framework.CastContext")
+            val getSharedInstanceMethod = castContextClass.getMethod("getSharedInstance", android.content.Context::class.java)
+            val castContext = getSharedInstanceMethod.invoke(null, this)
+            Log.d("MainActivity", "Cast context initialized via reflection: $castContext")
+        } catch (e: ClassNotFoundException) {
+            Log.w("MainActivity", "Cast SDK not found - Cast features will be disabled")
+        } catch (e: NoSuchMethodException) {
+            Log.e("MainActivity", "Cast SDK method not found", e)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to initialize Cast", e)
         }
     }
 }

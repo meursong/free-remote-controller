@@ -1,6 +1,7 @@
 package com.freeremote
 
 import android.app.Application
+import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
 
 /**
@@ -21,5 +22,15 @@ class FreeRemoteApp : Application() {
      */
     override fun onCreate() {
         super.onCreate()
+        Log.d("FreeRemoteApp", "Application onCreate called")
+
+        // Set up global exception handler for debugging
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            Log.e("FreeRemoteApp", "Uncaught exception in thread ${thread.name}", throwable)
+            // Let the default handler do its job
+            Thread.getDefaultUncaughtExceptionHandler()?.uncaughtException(thread, throwable)
+        }
+
+        Log.d("FreeRemoteApp", "Application initialization completed")
     }
 }
