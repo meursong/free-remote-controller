@@ -219,42 +219,40 @@ class CastManager @Inject constructor(
         val currentSession = sessionManager?.currentCastSession
         android.util.Log.d("CastManager", "Current session: $currentSession")
 
-        if (currentSession != null && currentSession.isConnected) {
+        // Check if session exists (don't check isConnected as it might be false during app switch)
+        if (currentSession != null) {
             android.util.Log.d("CastManager", "Session active, launching app: $appId")
 
             try {
-                // Stop any current media playback
+                // Stop any current media playback first
                 currentSession.remoteMediaClient?.stop()
 
-                // Method 1: Try launching as a receiver app
-                // This works for Cast receiver apps
-                val metadata = ApplicationMetadata()
-                metadata.applicationId = appId
+                // Get the current device
+                val device = currentSession.castDevice
 
-                // Method 2: For Android TV apps (Netflix, YouTube), use deep linking
-                // These apps need special handling
-                when(appId) {
-                    "CA5E8412" -> { // Netflix
-                        // Netflix uses special receiver
-                        loadMediaForApp("http://www.netflix.com", "Netflix", appId)
-                    }
-                    "233637DE" -> { // YouTube
-                        // YouTube uses special receiver
-                        loadMediaForApp("http://www.youtube.com", "YouTube", appId)
-                    }
-                    else -> {
-                        // For other apps, try standard launch
-                        val namespace = "urn:x-cast:com.google.cast.receiver"
-                        val message = """{"type":"LAUNCH","appId":"$appId"}"""
-                        currentSession.sendMessage(namespace, message)
-                            ?.setResultCallback { result ->
-                                if (result.status.isSuccess) {
-                                    android.util.Log.d("CastManager", "Launch message sent successfully")
-                                } else {
-                                    android.util.Log.e("CastManager", "Failed to send launch message: ${result.status}")
-                                }
-                            }
-                    }
+                if (device != null) {
+                    // End current session
+                    sessionManager.endCurrentSession(false)
+
+                    // Small delay to ensure session ends
+                    Thread.sleep(500)
+
+                    // Start new session with the target app
+                    android.util.Log.d("CastManager", "Starting new session with app: $appId")
+                    val intent = SessionRequest.Builder()
+                        .setCastDevice(device)
+                        .setAppId(appId)
+                        .setLaunchOptions(
+                            LaunchOptions.Builder()
+                                .setRelaunchIfRunning(true)
+                                .build()
+                        )
+                        .build()
+
+                    sessionManager.startSession(intent)
+                    android.util.Log.d("CastManager", "Session start requested for app: $appId")
+                } else {
+                    android.util.Log.e("CastManager", "No Cast device found in session")
                 }
 
             } catch (e: Exception) {
