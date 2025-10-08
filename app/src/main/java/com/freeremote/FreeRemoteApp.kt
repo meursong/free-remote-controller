@@ -24,11 +24,14 @@ class FreeRemoteApp : Application() {
         super.onCreate()
         Log.d("FreeRemoteApp", "Application onCreate called")
 
+        // Save the original handler before setting a new one
+        val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
+
         // Set up global exception handler for debugging
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("FreeRemoteApp", "Uncaught exception in thread ${thread.name}", throwable)
-            // Let the default handler do its job
-            Thread.getDefaultUncaughtExceptionHandler()?.uncaughtException(thread, throwable)
+            // Let the original handler do its job
+            originalHandler?.uncaughtException(thread, throwable)
         }
 
         Log.d("FreeRemoteApp", "Application initialization completed")
