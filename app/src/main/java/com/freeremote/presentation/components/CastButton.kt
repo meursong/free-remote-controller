@@ -1,15 +1,13 @@
 package com.freeremote.presentation.components
 
-import android.content.Context
-import android.view.ContextThemeWrapper
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
-import com.freeremote.R
+import com.google.android.gms.cast.framework.CastContext
 
 /**
  * Compose wrapper for MediaRouteButton that enables Cast functionality.
@@ -26,20 +24,24 @@ fun CastButton(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            // Create MediaRouteButton with proper theme
-            val themedContext = ContextThemeWrapper(context, R.style.Theme_FreeRemoteController)
-            MediaRouteButton(themedContext).apply {
-                // Wire up the button to Cast framework
-                CastButtonFactory.setUpMediaRouteButton(context, this)
+            MediaRouteButton(context).apply {
+                try {
+                    // Ensure CastContext is initialized before setting up the button
+                    CastContext.getSharedInstance(context)
 
-                // Apply tint color to the icon
-                // The MediaRouter library automatically provides the Cast icon
-                // No need to set custom drawable
+                    // Wire up the button to Cast framework
+                    CastButtonFactory.setUpMediaRouteButton(context, this)
+
+                    Log.d("CastButton", "Cast button initialized successfully")
+                } catch (e: Exception) {
+                    Log.e("CastButton", "Failed to initialize Cast button", e)
+                    // Button will still be created but won't function if Cast is not available
+                    isEnabled = false
+                }
             }
         },
         update = { button ->
-            // MediaRouteButton handles its own drawable internally
-            // Tinting is handled by the theme
+            // MediaRouteButton handles its own state internally
         }
     )
 }

@@ -1,6 +1,7 @@
 package com.freeremote.presentation
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.freeremote.presentation.navigation.RemoteNavHost
 import com.freeremote.presentation.theme.FreeRemoteControllerTheme
+import com.google.android.gms.cast.framework.CastContext
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -31,6 +33,16 @@ class MainActivity : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize Cast context early to prevent crashes
+        try {
+            CastContext.getSharedInstance(this)
+            Log.d("MainActivity", "Cast context initialized successfully")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to initialize Cast context", e)
+            // App can still run without Cast support
+        }
+
         setContent {
             FreeRemoteControllerTheme {
                 Surface(
